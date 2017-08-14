@@ -1,0 +1,68 @@
+<nav class="navbar navbar-default navbar-fixed-top">
+  <div class="container">
+  	<div class="row">
+  		<div class="col-md-2">
+  			<p>Scraper News - BBC</p>
+  		</div>
+  		<div class="col-md-1">
+  			<a href="./"><p>Home</p></a>
+  		</div>
+  		<div class="col-md-2">
+  			<a href="./saved">Saved Articles</a>
+  		</div>
+  		<div class="col-md-6">
+  			<button class="btn btn-default" type="submit" id="btn-scrape">Scrape Articles</button>
+  		</div>
+  	</div>    
+  </div>
+</nav>
+
+<header class="jumbotron">
+  <h1 class="text-center">Scraper News</h1>
+  <p class="text-center">BBC Edition</p>
+</header>
+
+<div class="container">
+	<div class="row">
+	  <div class="col-md-12">
+      {{#each articles}}
+  	  	<div class="panel panel-default">
+    			  <div class="panel-heading">
+    			    <h3 class="panel-title">{{title}}</h3>
+    			  </div>
+    			  <div class="panel-body">
+    			    <p>Follow link for complete article: <a href="{{link}}">{{link}}</a></p>
+              <button class="btn btn-default" type="submit" id="btn-save" data-id="{{_id}}" data-toggle="modal" data-target="#{{_id}}saveModal">Save Article</button>
+
+                {{!-- MODAL: SAVED ARTICLE START--}}
+                {{!-- IMPORTANT FYI NOTE: for modals, make sure ids are unique to the modal --}}
+                <div class="modal fade" id="{{_id}}saveModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+                  <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title" id="myModalLabel">Article Saved</h4>
+                      </div>
+                      <div class="modal-body">
+                        Article "{{title}}" saved.
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {{!-- MODAL: SAVED ARTICLE END --}}
+
+    			  </div>
+  			</div>
+      {{/each}}
+	  </div>
+	</div>
+</div>
+
+
+
+{{!--   <div id="notes">
+  	
+  </div> --}}

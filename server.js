@@ -1,47 +1,163 @@
-// Pull in dependencies
-
-// Snatches HTML from URLs
+var express = require("express");
+var bodyParser = require("body-parser");
+var exphbs = require("express-handlebars");
 var request = require("request");
-// Scrapes the HTML
 var cheerio = require("cheerio");
+var mongoose = require("mongoose");
+var logger = require("morgan");
 
-console.log("___ENTER app.js___");
+var Note = require("./models/Note.js");
+var Article = require("./models/Article.js");
 
-// Making a request call for the Onion News homepage
-request("http://www.theonion.com/", function(error, response, html) {
-    if (error) {
-        console.log("ERROR: " + error);
+// Set mongoose to leverage built in JavaScript ES6 Promises
+mongoose.Promise = Promise;
 
-    } else {
-        // Load the body of the HTML into cheerio
-        var $ = cheerio.load(html);
+var app = express();
 
-        // Empty array to save our scraped data
-        var numArticles = 0;
-        var scrapeResults = [];
+app.engine("handlebars", exphbs({ defaultLayout: "main" }));
+app.set("view engine", "handlebars");
 
-        // With cheerio, find each article tag with the class "summary"
-        $("article.summary").each(function(i, element) {
-            // Article data
-            var title = $(this).find("header").find("a").attr("title");
-            var url = "theonion.com" + $(this).find("a").attr("href");
-            var date = $(this).find("a").attr("data-pubdate");
-            var img = $(this).find("noscript").children("img").attr("src");
-            var description = $(this).find("div.desc").text().trim();
+app.use(logger("dev"));
+app.use(bodyParser.urlencoded({extended: false}));
 
-            var articleData = {
-                "index": i,
-                "title": title,
-                "description": description,
-                "url": url,
-                "date": date,
-                "img": img
-            };
+app.use(express.static("public"));
 
-            scrapeResults.push(articleData);
-        });
 
-        // After the program scans all of the articles, log the result
-        console.log(scrapeResults);
+// mongoose.connect("mongodb://localhost/scraping-mongoose");
+mongoose.connect("mongodb://heroku_n9jhvtvp:2ljmj0t4f8kvq1h8uvfli79tnc@ds151431.mlab.com:51431/heroku_n9jhvtvp");
+var db = mongoose.connection;
+
+db.on("error", function(error) {
+  console.log("Mongoose Error: ", error);
+});
+
+db.once("open", function() {
+  console.log("Mongoose connection successful.");
+});
+
+
+app.get("/", function(req, res) {
+  var articleArray = {
+    articles: [],
+  };
+
+  Article.find({}, function(error, doc) {
+    if (error) console.log(error);
+
+    else {
+      for (var i =0; i < doc.length; i++) {
+        articleArray.articles.push(doc[i]);
+      };
+      res.render('index', articleArray);
     }
+  });
+});
+
+app.get("/saved", function(req, res) {
+  var savedArticleArray = {
+    savedArticles: [],
+  };
+
+  Article.find({saved: true}, function(error, doc) {
+    if (error) console.log(error);
+
+    else {
+      for (var i =0; i < doc.length; i++) {
+        savedArticleArray.savedArticles.push(doc[i]);
+      };
+      res.render('saved', savedArticleArray);
+    }
+  });
+});
+
+app.get("/scrape", function(req, res) {
+  request("http://www.bbc.com/news", function(error, response, html) {
+    var $ = cheerio.load(html);
+
+    $("a.gs-c-promo-heading").each(function(i, element) {
+      console.log(element);
+
+      var result = {};
+      var link = $(element).attr("href");
+
+      var fixLink = function (){
+        if (link[0] === 'h' && link[1] === 't' && link[2] === 't' && link[3] === 'p') {
+          result.link = link
+        }
+        else result.link = 'http://www.bbc.com' + link;
+      };
+
+      result.title = $(element).children().text();
+      fixLink();
+
+      var entry = new Article(result);
+
+      entry.save(function(err, doc) {
+        if (err) console.log(err);
+
+        else console.log(doc);
+      });
+    });    
+
+    // WHY DOESN'T THE REDIRECT WORK??????
+    res.redirect('/');
+    // ???????????
+  });
+});
+
+app.post("/saved/:id", function(req, res) {
+  Article.findOneAndUpdate({ "_id": req.params.id }, {"saved": true})
+  .exec(function(err, doc) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      res.send(doc);
+    }
+  });
+});
+
+app.post("/unsave/:id", function(req, res) {
+  Article.findOneAndUpdate({ "_id": req.params.id }, {"saved": false})
+  .exec(function(err, doc) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      res.send('removed');
+    }
+  });
+});
+
+app.post("/article/notes/:id", function(req, res) {
+  var newNote = new Note(req.body);
+
+  Article.findOneAndUpdate({ "_id": req.params.id }, {$push: {"notes": newNote }})
+  .exec(function(err, doc) {
+    if (err) {
+      console.log(err);
+    }
+    else {
+      res.send('note added');
+    }
+  });
+});
+
+app.delete("/article/notes/:id", function(req, res) {
+
+  // Article.findOneAndUpdate({ "_id": req.params.id }, {$push: {"notes": newNote }})
+  // .exec(function(err, doc) {
+  //   if (err) {
+  //     console.log(err);
+  //   }
+  //   else {
+  //     res.send('note added');
+  //   }
+  // });
+  
+});
+
+// Listen on port 3000
+app.listen(3000, function() {
+  console.log("App running on port 3000!");
 });
